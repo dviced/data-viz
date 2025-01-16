@@ -1,47 +1,42 @@
+import yfinance as yf
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+import plotly.express as px
+import streamlit as st
 
-# Load the dataset
-pokemon_data = pd.ExcelFile('pokemon.xlsx')
-pokemon_stats = pokemon_data.parse('Pokemon')  # Parse the 'Pokemon' sheet
+# Define the SMI companies and their tickers
+smi_companies = {
+    "Zurich Insurance Group AG": "ZURN.SW",
+    "Lonza Group AG": "LONN.SW",
+    "Givaudan SA": "GIVN.SW",
+    "Swiss Life Holding AG": "SLHN.SW",
+    "Geberit AG": "GEBN.SW",
+}
 
-# Filter the data for specific Pokémon
-bulbasaur_stats = pokemon_stats[pokemon_stats['Name'].str.strip() == 'Bulbasaur']
-charmander_stats = pokemon_stats[pokemon_stats['Name'].str.strip() == 'Charmander']
-squirtle_stats = pokemon_stats[pokemon_stats['Name'].str.strip() == 'Squirtle']
+# Fetch historical data for the companies
+start_date = "2024-01-01"
+end_date = "2025-01-01"
 
-# Extract the relevant stats
-categories = ['HP', 'Sp.Attack', 'Sp.Defense', 'Attack', 'Defense',  'Speed']
-values_bulb = bulbasaur_stats[categories].values.flatten()
-values_charm = charmander_stats[categories].values.flatten()
-values_squirt = squirtle_stats[categories].values.flatten()
+price_data = {}
+for company, ticker in smi_companies.items():
+    stock_data = yf.download(ticker, start=start_date, end=end_date, progress=False)["Adj Close"]
+    price_data[company] = stock_data
 
-# Repeat the first value to close the radar chart
-values_bulb = np.append(values_bulb, values_bulb[0])
-values_charm = np.append(values_charm, values_charm[0])
-values_squirt = np.append(values_squirt, values_squirt[0])
-angles = np.linspace(0, 2 * np.pi, len(categories) + 1, endpoint=True)
+# Combine data into a DataFrame
+df = pd.DataFrame(price_data)
 
-# Create the radar chart
-plt.figure(figsize=(5, 5))
-ax = plt.subplot(111, polar=True)
-ax.plot(angles, values_bulb, linewidth=1.8, linestyle='solid', label='Bulbasaur', color='green')
-ax.plot(angles, values_charm, linewidth=1.8, linestyle='solid', label='Charmander', color = 'red')
-ax.plot(angles, values_squirt, linewidth=1.8, linestyle='solid', label='Squirtle', color = 'blue')
+# Reshape for Plotly (long format)
+df_reset = df.reset_index().melt(id_vars="Date", var_name="Company", value_name="Stock Price")
 
-# Add labels
-ax.set_xticks(angles[:-1])
-ax.set_xticklabels(categories, fontsize=8)
+# Create the interactive line chart
+fig = px.line(
+    df_reset, 
+    x="Date", 
+    y="Stock Price", 
+    color="Company", 
+    title="SMI Components Stock Prices (2024)",
+    labels={"Date": "Date", "Stock Price": "Price (CHF)", "Company": "Company"},
+    color_discrete_sequence=px.colors.qualitative.Set2  # Custom color palette
+)
+fig.update_layout(template="plotly_white", hovermode="x unified")
 
-# Shrink the circle
-ax.set_ylim(0, max(max(values_bulb), max(values_charm), max(values_squirt)))
-
-# Add a title
-plt.title('Bae Pokemon Strenghts', size=16, pad=20)
-ax.set_yticks([])  # Remove radial gridlines for simplicity
-
-# Add a legend
-plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
-
-plt.show()
+st.plotly_chart(fig)
