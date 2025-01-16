@@ -1,11 +1,6 @@
-!pip install pandas
-!pip install plotly
-!pip install streamlit
-!pip install yfinance
-
+import streamlit as st
 import pandas as pd
 import plotly.express as px
-import streamlit as st
 import yfinance as yf
 
 # Define the SMI companies and their tickers
